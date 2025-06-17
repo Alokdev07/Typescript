@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Catcher Game</title>
+    <!-- Google Fonts - Inter for clean typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* General body and container styling for a cosmic theme */
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a0f2c, #0d0617); /* Dark cosmic background */
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden; /* Prevent scrollbars due to animations */
+            -webkit-font-smoothing: antialiased; /* Smoother text rendering */
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        #game-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05); /* Slightly transparent background */
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), 0 0 60px rgba(0, 255, 255, 0.2); /* Subtle glow around the container */
+            position: relative;
+            max-width: 90vw; /* Responsive width */
+            box-sizing: border-box; /* Include padding in width */
+            overflow: hidden; /* Clip any overflowing content */
+        }
+
+        /* Title styling with glowing effect */
+        h1 {
+            color: #aaffff; /* Cyan-ish color */
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; /* Double glow effect */
+            margin-bottom: 20px;
+            font-size: 2.5em; /* Larger title */
+            letter-spacing: 2px;
+        }
+
+        /* Scoreboard styling */
+        #score-board {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #fff;
+            text-shadow: 0 0 5px #fff; /* Subtle white glow */
+        }
+
+        /* Canvas styling */
+        canvas {
+            background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent dark background for game area */
+            border-radius: 15px;
+            display: block; /* Remove extra space below inline-block */
+            margin: 0 auto 20px auto; /* Center canvas with margin */
+            box-shadow: 0 0 20px rgba(0, 191, 255, 0.4), 0 0 40px rgba(0, 191, 255, 0.2); /* Blue glow */
+            cursor: pointer; /* Indicate it's interactive */
+            touch-action: none; /* Prevent all default touch actions (like scrolling/zooming) */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+            transition: box-shadow 0.3s ease; /* Smooth transition for hover/focus */
+        }
+
+        /* Button styling with gradients and shadow effects */
+        button {
+            background: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%); /* Purple to blue gradient */
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            border-radius: 30px; /* Pill-shaped button */
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Soft shadow */
+            transition: all 0.3s ease; /* Smooth transitions for hover/active */
+            outline: none; /* Remove default focus outline */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 25px rgba(106, 17, 203, 0.7); /* Enhanced shadow and glow on hover */
+            transform: translateY(-2px); /* Slight lift effect */
+            background: linear-gradient(45deg, #2575fc 0%, #6a11cb 100%); /* Reverse gradient on hover */
+        }
+
+        button:active {
+            transform: translateY(0); /* Return to original position */
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); /* Compressed shadow */
+        }
+
+        /* Message Box Styling - for game instructions, win/loss messages */
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95); /* Very dark, almost opaque background */
+            border: 2px solid #0ff; /* Cyan border */
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.7), 0 0 50px rgba(0, 255, 255, 0.5); /* Stronger glow */
+            z-index: 1000; /* Ensure it's on top */
+            text-align: center;
+            backdrop-filter: blur(5px); /* Frosty effect for background */
+            -webkit-backdrop-filter: blur(5px);
+            max-width: 80%;
+            transition: opacity 0.3s ease, transform 0.3s ease; /* Smooth show/hide */
+        }
+
+        #message-box p {
+            font-size: 2em;
+            color: #aaffff; /* Cyan-ish text color */
+            margin-bottom: 25px;
+            text-shadow: 0 0 10px #0ff; /* Text glow */
+            font-weight: bold;
+        }
+
+        #message-box button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+        }
+
+        /* Utility class to hide elements */
+        .hidden {
+            opacity: 0;
+            pointer-events: none; /* Make it non-interactive when hidden */
+            transform: translate(-50%, -50%) scale(0.9); /* Slight scale for transition */
+        }
+
+        /* Winning Glow Animation - applied to game-container on win */
+        @keyframes winningGlow {
+            0% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), 0 0 60px rgba(0, 255, 255, 0.2); }
+            50% { box-shadow: 0 0 40px rgba(0, 255, 255, 0.6), 0 0 80px rgba(0, 255, 255, 0.4), 0 0 100px rgba(0, 255, 255, 0.3); }
+            100% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), 0 0 60px rgba(0, 255, 255, 0.2); }
+        }
+
+        .winning-glow {
+            animation: winningGlow 1.5s infinite alternate; /* Pulsating glow */
+        }
+
+        /* Media queries for responsiveness on smaller screens */
+        @media (max-width: 768px) {
+            #game-container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            #score-board {
+                font-size: 1.2em;
+            }
+            canvas {
+                margin-bottom: 15px;
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 1em;
+            }
+            #message-box p {
+                font-size: 1.5em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #game-container {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            #score-board {
+                font-size: 1em;
+            }
+            button {
+                padding: 8px 15px;
+                font-size: 0.9em;
+            }
+            #message-box {
+                padding: 20px;
+            }
+            #message-box p {
+                font-size: 1.2em;
+            }
+            #message-box button {
+                padding: 8px 15px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Star Catcher</h1>
+        <div id="score-board">Score: <span id="score">0</span></div>
+        <canvas id="gameCanvas"></canvas>
+        <button id="restartButton">Restart Game</button>
+
+        <!-- Custom message box for instructions, win/loss -->
+        <div id="message-box" class="hidden">
+            <p id="message-text"></p>
+            <button id="message-button">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Game variables and configuration
+        let canvas, ctx; // Canvas and its 2D rendering context
+        let basket; // The basket object
+        let stars = []; // Array to hold all active stars
+        let score = 0; // Player's current score
+        let gameRunning = false; // Flag to indicate if the game is active
+        let gameWon = false; // Flag to indicate if the game has been won
+        let leftPressed = false; // Keyboard state for left arrow key
+        let rightPressed = false; // Keyboard state for right arrow key
+        let starGenerationInterval; // Holds the interval ID for star generation
+
+        // Game configuration constants
+        const STAR_SPAWN_INTERVAL_MS = 800; // How often new stars appear (milliseconds)
+        const STAR_MAX_SPEED = 4; // Maximum vertical speed for stars
+        const STAR_MIN_SPEED = 1; // Minimum vertical speed for stars
+        const BASKET_SPEED = 7; // Horizontal movement speed of the basket
+        const WIN_SCORE = 20; // Score required to win the game
+
+        // UI Elements references
+        const scoreDisplay = document.getElementById('score');
+        const restartButton = document.getElementById('restartButton');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const messageButton = document.getElementById('message-button');
+        const gameContainer = document.getElementById('game-container'); // For winning glow
+
+        /**
+         * Displays a custom message box with a given text and an optional callback.
+         * @param {string} text - The message to display.
+         * @param {function} [callback] - Function to execute when the OK button is clicked.
+         */
+        function showMessage(text, callback) {
+            messageText.textContent = text;
+            messageBox.classList.remove('hidden'); // Show the message box
+            messageButton.onclick = () => {
+                messageBox.classList.add('hidden'); // Hide on OK click
+                if (callback) callback(); // Execute callback if provided
+            };
+        }
+
+        /**
+         * Creates and returns a new basket object.
+         * Includes properties for position, dimensions, speed, color, and drawing/updating methods.
+         */
+        function createBasket() {
+            // Initial position is centered at the bottom of the canvas
+            const initialWidth = 120;
+            const initialHeight = 30;
+            return {
+                width: initialWidth,
+                height: initialHeight,
+                x: (canvas.width / 2) - (initialWidth / 2),
+                y: canvas.height - 40, // 40 pixels from the bottom
+                speed: BASKET_SPEED,
+                color: '#ff69b4', // Vibrant Pink color for the basket
+
+                /** Draws the basket on the canvas. */
+                draw: function() {
+                    ctx.beginPath();
+                    ctx.rect(this.x, this.y, this.width, this.height);
+                    ctx.fillStyle = this.color;
+                    ctx.shadowColor = 'rgba(255, 105, 180, 0.7)'; // Pink glow
+                    ctx.shadowBlur = 25; // Intensity of the glow
+                    ctx.fill();
+                    ctx.closePath();
+                    ctx.shadowBlur = 0; // Reset shadow blur to prevent it affecting other drawings
+                },
+
+                /** Updates the basket's position based on keyboard input. */
+                update: function() {
+                    if (leftPressed && this.x > 0) {
+                        this.x -= this.speed;
+                    }
+                    if (rightPressed && this.x + this.width < canvas.width) {
+                        this.x += this.speed;
+                    }
+                    // Ensure the basket stays within canvas boundaries
+                    if (this.x < 0) this.x = 0;
+                    if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+                }
+            };
+        }
+
+        /**
+         * Creates and returns a new star object.
+         * Includes properties for position, radius, speed, color, and drawing/updating methods.
+         */
+        function createStar() {
+            return {
+                radius: 8 + Math.random() * 7, // Random size between 8 and 15
+                x: Math.random() * (canvas.width - 20) + 10, // Random X position within canvas bounds
+                y: -20, // Start above the canvas to fall into view
+                speed: STAR_MIN_SPEED + Math.random() * (STAR_MAX_SPEED - STAR_MIN_SPEED), // Random speed within range
+                color: `hsl(${Math.random() * 360}, 100%, 70%)`, // Random bright color (hue, saturation, lightness)
+
+                /** Draws the star on the canvas. */
+                draw: function() {
+                    ctx.beginPath();
+                    // Drawing a circle to represent the star, with a glow effect
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.shadowColor = this.color; // Star glows in its own color
+                    ctx.shadowBlur = 10 + this.radius * 2; // Glow intensity based on size
+                    ctx.fill();
+                    ctx.closePath();
+                    ctx.shadowBlur = 0; // Reset shadow blur
+                },
+
+                /** Updates the star's vertical position (makes it fall). */
+                update: function() {
+                    this.y += this.speed;
+                }
+            };
+        }
+
+        /**
+         * Checks for collision between a star and the basket.
+         * @param {object} star - The star object.
+         * @param {object} basket - The basket object.
+         * @returns {boolean} True if collision occurs, false otherwise.
+         */
+        function isColliding(star, basket) {
+            // Simple AABB collision detection for circle (star) and rectangle (basket)
+            // This is an approximation as it treats star as a square for the sake of simpler collision.
+            // For pixel-perfect circle-rect collision, a more complex algorithm would be needed.
+            return star.x > basket.x &&
+                   star.x < basket.x + basket.width &&
+                   star.y + star.radius > basket.y &&
+                   star.y - star.radius < basket.y + basket.height;
+        }
+
+        /**
+         * Initializes or resets the game state.
+         * Sets up canvas, basket, score, and starts star generation.
+         */
+        function initGame() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+
+            resizeCanvas(); // Set initial canvas size based on window size
+
+            basket = createBasket();
+            stars = []; // Clear any existing stars
+            score = 0;
+            gameRunning = true;
+            gameWon = false;
+            scoreDisplay.textContent = score; // Update score display
+
+            // Clear previous interval if any, then start new star generation
+            if (starGenerationInterval) {
+                clearInterval(starGenerationInterval);
+            }
+            starGenerationInterval = setInterval(() => {
+                if (gameRunning) { // Only generate stars if game is running
+                    stars.push(createStar());
+                }
+            }, STAR_SPAWN_INTERVAL_MS);
+
+            // Remove winning glow if it was active from previous game
+            gameContainer.classList.remove('winning-glow');
+
+            // Show initial instructions before starting the game loop
+            showMessage("Collect " + WIN_SCORE + " stars! Use arrow keys or touch.", () => {
+                gameLoop(); // Start the game loop after the user dismisses the message
+            });
+        }
+
+        /**
+         * The main game loop function.
+         * Clears canvas, updates all game objects, draws them, and requests next frame.
+         */
+        function gameLoop() {
+            if (!gameRunning && !gameWon) return; // Stop the loop if game is truly over (lost and not won)
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the entire canvas
+
+            basket.update(); // Update basket position
+            basket.draw();   // Draw basket
+
+            // Iterate stars in reverse to safely remove elements during iteration
+            for (let i = stars.length - 1; i >= 0; i--) {
+                const star = stars[i];
+                star.update(); // Update star position (make it fall)
+                star.draw();   // Draw star
+
+                // Check for collision with the basket
+                if (isColliding(star, basket)) {
+                    score++;
+                    scoreDisplay.textContent = score; // Update score display
+                    stars.splice(i, 1); // Remove collected star from array
+
+                    if (score >= WIN_SCORE && !gameWon) {
+                        gameWon = true; // Set game won flag
+                        gameRunning = false; // Stop the game loop logic
+                        // Display winning message and apply a special visual effect
+                        showMessage("YOU WIN! 🎉 Great Job!", () => {
+                            // After message, game is in 'won' state, ready for restart
+                        });
+                        gameContainer.classList.add('winning-glow'); // Apply winning glow to container
+                    }
+                } else if (star.y - star.radius > canvas.height) {
+                    // Star missed the basket and went off-screen
+                    stars.splice(i, 1); // Remove missed star
+                    if (!gameWon) { // Game Over only if the game hasn't been won yet
+                        gameRunning = false; // Stop the game loop logic
+                        // Display game over message
+                        showMessage("Game Over! A star was missed. Try again!", () => {
+                            // After message, game is in 'lost' state, ready for restart
+                        });
+                    }
+                }
+            }
+
+            // Continue the animation loop only if the game is running or has just been won (for effect)
+            if (gameRunning || gameWon) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        /**
+         * Resizes the canvas based on the window's current dimensions.
+         * This ensures the game is responsive to different screen sizes.
+         */
+        function resizeCanvas() {
+            // Set canvas dimensions to be a percentage of window size, with max limits
+            canvas.width = Math.min(window.innerWidth * 0.9, 800); // Max width 800px
+            canvas.height = Math.min(window.innerHeight * 0.7, 500); // Max height 500px
+
+            // If basket already exists, re-center it and adjust its Y position
+            if (basket) {
+                basket.x = (canvas.width / 2) - (basket.width / 2);
+                basket.y = canvas.height - 40;
+            }
+        }
+
+        // Event Listeners for User Input and Window Changes
+
+        // Window resize listener to adjust canvas size dynamically
+        window.addEventListener('resize', resizeCanvas);
+
+        // Keyboard input for basket movement (desktop/laptop)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                leftPressed = true;
+            } else if (e.key === 'ArrowRight') {
+                rightPressed = true;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') {
+                leftPressed = false;
+            } else if (e.key === 'ArrowRight') {
+                rightPressed = false;
+            }
+        });
+
+        // Start the game when the window has fully loaded all resources
+        window.onload = function() {
+            initGame(); // Initialize the game
+
+            // Touch controls for mobile devices - moved here to ensure canvas is defined
+            let touchMoveThreshold = 20; // Pixels to move before registering as a directional swipe
+            let lastTouchX = 0;
+
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent default browser actions like scrolling/zooming
+                lastTouchX = e.touches[0].clientX; // Record initial touch X position
+                // Determine initial direction based on touch half of screen
+                if (lastTouchX < canvas.width / 2) {
+                    leftPressed = true;
+                    rightPressed = false;
+                } else {
+                    rightPressed = true;
+                    leftPressed = false;
+                }
+            }, { passive: false }); // `passive: false` is crucial for `preventDefault()` to work
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault(); // Prevent default browser actions
+                const currentTouchX = e.touches[0].clientX;
+                // Simple logic: if current touch moves significantly left or right, update direction
+                if (currentTouchX < lastTouchX - touchMoveThreshold) {
+                    leftPressed = true;
+                    rightPressed = false;
+                } else if (currentTouchX > lastTouchX + touchMoveThreshold) {
+                    rightPressed = true;
+                    leftPressed = false;
+                } else {
+                     // If not moved significantly, maintain current direction or stop if within deadzone
+                     // For continuous movement, we keep the last state if not explicitly changing direction
+                }
+                lastTouchX = currentTouchX; // Update last touch X
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault(); // Prevent default browser actions
+                leftPressed = false;
+                rightPressed = false;
+            }, { passive: false });
+        };
+
+        // Restart button click listener
+        restartButton.addEventListener('click', () => {
+            initGame(); // Re-initialize the game
+        });
+    </script>
+</body>
+</html>
